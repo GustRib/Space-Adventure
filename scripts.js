@@ -17,34 +17,124 @@
 // Mas não esqueça, mais uma vez, o principal é desenvolver o que o enunciado pede, extra é extra!
 
 //--------------------------------------------------------------------------------------------------------------------------
-init();
-
-function init() {
+// controla a cena
 // controla a cena
 var currentScene;
-
+ 
 // contador de estrelas
 var count=0;
+var contador=0;
+var MAX_HEALTH = 5,
+    STARTING_SCALE = 1.2,
+    POWER_UP_LIFETIME = 200;
+
+var healthImage = getImage("cute/Heart");
+var enemyRockImage = getImage("cute/Rock");
+var player = {
+    health: MAX_HEALTH
+};
+
+var State = {
+    START: 0,
+    PLAYING: 1,
+    PAUSED: 2,
+    LOST: 3,
+    WON: 4
+};
+var state = State.START;
+
+var canvasScale = STARTING_SCALE;
+
+/** Show loss of health for a few frames after being hit. */
+var drawPlayerImpact = function() 
+{
+    var impactFrames = 15;
+    if (frameCount - player.lastCollided >= impactFrames) 
+    {
+        return;
+    }
+    
+    var createBody = function(x, y) {
+    return {
+        x: x,
+        y: y,
+        deathFrame: Infinity
+    };
+};
+    
+    var canvas = {
+    x: 0,
+    y: 0,
+    height: height * canvasScale,
+    width: width * canvasScale
+    };
+    
+    var createProjectile = function(x, y, dx, dy) {
+    var projectile = createBody(x, y);
+    projectile.dx = dx;
+    projectile.dy = dy;
+    return projectile;
+};
+    
+    var createPowerUp = function(x, y) 
+    {
+        var powerUp = createProjectile(x, y, 0, 0);
+        powerUp.deathFrame = frameCount + POWER_UP_LIFETIME;
+        powerUp.scale = 1;
+    
+        var randVal = random();
+        
+        if (randVal < 0.06 && player.health < MAX_HEALTH) 
+        {
+            powerUp.typeof = powerUp.HEALTH;
+        
+        }
+    };
+
+    
+    var drawHealth = function() 
+    {
+        var x = 4 * (canvas.width - 30) / canvasScale;
+        for (var i = 0; i < min(player.health, 40); i += 1) 
+        {
+            pushMatrix();
+            scale(0.48, 0.48);
+            image(healthImage, x, -30);
+            popMatrix();
+            x -= 110;
+        }
+    };
+};
+
+var drawMeta = function() {
+    resetMatrix();
+    scale(0.5, 0.5);
+
+    if (state === State.PLAYING || state === State.PAUSED) {
+        //drawHealth();
+    }
+};
 
 // funcao desenha estrela
 var makeStars = function() {
     fill(212, 239, 247);
     ellipse(random(width),random(height),5,5);
     count++;
+    //println(count);
 };
 /* Objeto Mover */
-
+ 
 var Mover = function() {
 //  this.position = new PVector(random(width), random(height));
-    this.position = new PVector(500, random(height));
-    this.velocity = new PVector(random(-25, -1), random(-0.4, -0.4));
+  this.position = new PVector(500, random(height));
+  this.velocity = new PVector(random(-25, -1), random(-0.4, -0.4));
   // adicionando acelerando crescente mas constante ao objeto
-//  this.acceleration = new PVector(-0.001,0.005);
-    this.acceleration = new PVector(-0.003,-0.00001);
+  this.acceleration = new PVector(-0.001,0.005);
+  //this.acceleration = new PVector(-0.003,-0.00001);
   // limite de velocidade
-    this.topspeed = 10;    
+  this.topspeed = 10;    
 };
-
+ 
 Mover.prototype.update = function() {
     // adicionando a aceleração à velocidade que já temos
     this.velocity.add(this.acceleration);
@@ -56,31 +146,37 @@ Mover.prototype.update = function() {
     this.position.add(this.velocity);
 
 };
-
+ 
 Mover.prototype.display = function() {
-    stroke(0);
-    strokeWeight(2);
-    fill(127);
-    ellipse((this.position.x),(this.position.y), 30, 30);
+  fill(29, 247, 5);
+  ellipse((this.position.x),(this.position.y), 50, 50);
 };
-
+ 
 Mover.prototype.checkEdges = function() {
-
-    if (this.position.x > width) {
-        this.position.x = 0;
-    }  
-    else if (this.position.x < 0) {
-        this.position.x = width;
+ 
+  if (this.position.x > width) {
+    this.position.x = 0;
+  }  
+  else if (this.position.x < 0) {
+    this.position.x = width;
     //this.position.y = random(1,200);
     //println(this.position.y + " " + this.position.x);
-    }
-
-    if (this.position.y > height) {
-        this.position.y = 0;
-    }  
-    else if (this.position.y < 0) {
+  }
+ 
+  if (this.position.y > height) {
+    this.position.y = 0;
+  }  
+  else if (this.position.y < 0) {
     this.position.y = height;
-        }
+  }
+};
+ 
+ Mover.prototype.bateu = function(){
+   if(mouseX > this.position.x && mouseY < this.position.y)
+    {
+        contador++;
+        println("Bateu: "+ contador);
+    }  
 };
 
 var mover = new Mover();
@@ -95,44 +191,47 @@ var drawScene1 = function() {
     textSize(15);
     text("Clique para começar", (width/2)-60, (height/2)+50);
 };
-
 // Scene 2
 var drawScene2 = function() {
     currentScene = 2;
     background(173, 239, 255);
     fill(7, 14, 145);
     image(getImage("space/background"), 0,0, width, height);
-
+    
+     
     // desenhar estrelas
-    // makeStars();
-
+    //makeStars();
+     
     // desenha a nave e a desloca na tela seguindo o mouse
     image(getImage("space/rocketship"), mouseX-30, mouseY-30, 60,60);
-
+     
     // crie ou chama uma função que desenhe e mova 1 objeto
-    mover.update();
-    mover.checkEdges();
-    mover.display(); 
+      mover.update();
+      mover.checkEdges();
+      mover.display(); 
+      
+    // crie um função de aceleração do objeto
+        mover.bateu();
 };
-
-
+ 
+ 
 var drawScene3 = function() {
     currentScene = 3;
     background(173, 239, 255);
     println (" GAME OVER ");
 };
-
+ 
 // clicou no mouse, avança cena
 mouseClicked = function() {
     if (currentScene === 1) {
         drawScene2();
-    } else if (currentScene === 2) {
+   } else if (currentScene === 2) {
         drawScene3();
     } else if (currentScene === 3) {
         drawScene1();
     }
 };
-
+ 
 // funcao draw que desenha na tela.
 draw = function() {
     if (count < 300 && currentScene === 1) {
@@ -143,10 +242,6 @@ draw = function() {
         drawScene2();
     }
 };
-
+ 
 // vamos começar pela Cena 1
 drawScene1();
-// Space-Adventure.txt
-// Exibindo Space-Adventure.txt…
-}
-document.getElementById("game").innerHTML = init(); 
